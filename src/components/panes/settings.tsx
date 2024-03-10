@@ -24,10 +24,13 @@ import {
   getThemeName,
   updateThemeName,
   getRenderMode,
+  getKeyboardLayoutSettings,
   updateRenderMode,
+  updateKeyboardLayout,
 } from 'src/store/settingsSlice';
 import {AccentSelect} from '../inputs/accent-select';
 import {THEMES} from 'src/utils/themes';
+import {keyLocales, getAvailableLocales} from 'src/utils/key-locale';
 import {MenuContainer} from './configure-panes/custom/menu-generator';
 import {MenuTooltip} from '../inputs/tooltip';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
@@ -60,6 +63,7 @@ export const Settings = () => {
   const themeMode = useAppSelector(getThemeMode);
   const themeName = useAppSelector(getThemeName);
   const renderMode = useAppSelector(getRenderMode);
+  const keyboardLayout = useAppSelector(getKeyboardLayoutSettings);
   const selectedDevice = useAppSelector(getSelectedConnectedDevice);
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -86,6 +90,10 @@ export const Settings = () => {
     : [{label: '2D', value: '2D'}];
   const renderModeDefaultValue = renderModeOptions.find(
     (opt) => opt.value === renderMode,
+  );
+  const keyboardLayoutOptions = getAvailableLocales();
+  const keyboardLayoutDefaultValue = keyboardLayoutOptions.find(
+    (opt) => opt.value === keyboardLayout,
   );
   return (
     <Pane>
@@ -149,6 +157,18 @@ export const Settings = () => {
                   options={renderModeOptions}
                   onChange={(option: any) => {
                     option && dispatch(updateRenderMode(option.value));
+                  }}
+                />
+              </Detail>
+            </ControlRow>
+            <ControlRow>
+              <Label>Keyboard Layout</Label>
+              <Detail>
+                <AccentSelect
+                  defaultValue={keyboardLayoutDefaultValue}
+                  options={keyboardLayoutOptions}
+                  onChange={(option: any) => {
+                    option && dispatch(updateKeyboardLayout(option.value));
                   }}
                 />
               </Detail>

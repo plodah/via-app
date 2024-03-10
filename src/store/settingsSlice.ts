@@ -55,6 +55,10 @@ const settingsSlice = createSlice({
       state.renderMode = action.payload;
       setSettings(state);
     },
+    updateKeyboardLayout: (state, action: PayloadAction<string>) => {
+      state.keyboardLayout = action.payload;
+      setSettings(state);
+    },
     updateDesignDefinitionVersion: (
       state,
       action: PayloadAction<DefinitionVersion>,
@@ -111,6 +115,7 @@ export const {
   disableGlobalHotKeys,
   enableGlobalHotKeys,
   updateRenderMode,
+  updateKeyboardLayout,
   updateThemeName,
   updateDesignDefinitionVersion,
 } = settingsSlice.actions;
@@ -135,6 +140,8 @@ export const getTestKeyboardSoundsSettings = (state: RootState) =>
   state.settings.testKeyboardSoundsSettings;
 export const getRenderMode = (state: RootState) =>
   webGLIsAvailable ? state.settings.renderMode : '2D';
+export const getKeyboardLayoutSettings = (state: RootState) =>
+    state.settings.keyboardLayout;
 export const getThemeMode = (state: RootState) => state.settings.themeMode;
 export const getThemeName = (state: RootState) => state.settings.themeName;
 export const getSelectedTheme = createSelector(getThemeName, (themeName) => {

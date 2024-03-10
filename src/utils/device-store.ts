@@ -32,6 +32,7 @@ const defaultStoreData = {
     showDesignTab: false,
     disableFastRemap: false,
     renderMode: '2D' as const,
+    keyboardLayout: 'default' as const,
     themeMode: 'dark' as const,
     designDefinitionVersion: 'v3' as const,
     themeName: 'OLIVIA_DARK',
@@ -170,6 +171,10 @@ export const getRenderModeFromStore = (): '3D' | '2D' => {
 
 export const getThemeNameFromStore = () => {
   return deviceStore.get('settings')?.themeName;
+};
+
+export const getKeyboardLayoutFromStore = () => {
+  return deviceStore.get('settings')?.keyboardLayout;
 };
 
 export const getSettings = (): Settings => deviceStore.get('settings');
