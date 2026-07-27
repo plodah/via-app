@@ -185,7 +185,8 @@ type HIDAddress = string;
 type Layer = number;
 type Row = number;
 type Column = number;
-type CommandQueueArgs = [number, Array<number>] | (() => Promise<void>);
+type CommandQueueArgs =
+  [number, Array<number>, string | undefined] | (() => Promise<void>);
 type CommandQueueEntry = {
   res: (val?: any) => void;
   rej: (error?: any) => void;
@@ -412,22 +413,31 @@ export class KeyboardAPI {
     const res = await this.hidCommand(
       APICommand.CUSTOM_MENU_GET_VALUE,
       commandBytes,
+      'CUSTOM_MENU_GET_VALUE',
     );
     return res.slice(0 + commandBytes.length);
   }
 
   async setCustomMenuValue(...args: number[]): Promise<void> {
-    await this.hidCommand(APICommand.CUSTOM_MENU_SET_VALUE, args);
+    await this.hidCommand(
+      APICommand.CUSTOM_MENU_SET_VALUE,
+      args,
+      'CUSTOM_MENU_SET_VALUE',
+    );
   }
 
   async getPerKeyRGBMatrix(ledIndexMapping: number[]): Promise<number[][]> {
     const res = await Promise.all(
       ledIndexMapping.map((ledIndex) =>
-        this.hidCommand(APICommand.CUSTOM_MENU_GET_VALUE, [
-          ...PER_KEY_RGB_CHANNEL_COMMAND,
-          ledIndex,
-          1, // count
-        ]),
+        this.hidCommand(
+          APICommand.CUSTOM_MENU_GET_VALUE,
+          [
+            ...PER_KEY_RGB_CHANNEL_COMMAND,
+            ledIndex,
+            1, // count
+          ],
+          'CUSTOM_MENU_GET_VALUE',
+        ),
       ),
     );
     return res.map((r) => [...r.slice(5, 7)]);
@@ -438,13 +448,17 @@ export class KeyboardAPI {
     hue: number,
     sat: number,
   ): Promise<void> {
-    await this.hidCommand(APICommand.CUSTOM_MENU_SET_VALUE, [
-      ...PER_KEY_RGB_CHANNEL_COMMAND,
-      index,
-      1, // count
-      hue,
-      sat,
-    ]);
+    await this.hidCommand(
+      APICommand.CUSTOM_MENU_SET_VALUE,
+      [
+        ...PER_KEY_RGB_CHANNEL_COMMAND,
+        index,
+        1, // count
+        hue,
+        sat,
+      ],
+      'CUSTOM_MENU_SET_VALUE',
+    );
   }
 
   async getBacklightValue(
@@ -520,7 +534,11 @@ export class KeyboardAPI {
   }
 
   async commitCustomMenu(channel: number) {
-    await this.hidCommand(APICommand.CUSTOM_MENU_SAVE, [channel]);
+    await this.hidCommand(
+      APICommand.CUSTOM_MENU_SAVE,
+      [channel],
+      'CUSTOM_MENU_SAVE',
+    );
   }
 
   async saveLighting() {
@@ -673,12 +691,13 @@ export class KeyboardAPI {
   async hidCommand(
     command: Command,
     bytes: Array<number> = [],
+    commandName?: string,
   ): Promise<number[]> {
     return new Promise((res, rej) => {
       this.commandQueueWrapper.commandQueue.push({
         res,
         rej,
-        args: [command, bytes],
+        args: [command, bytes, commandName],
       });
       if (!this.commandQueueWrapper.isFlushing) {
         this.flushQueue();
@@ -733,7 +752,11 @@ export class KeyboardAPI {
     });
   }
 
-  async _hidCommand(command: Command, bytes: Array<number> = []): Promise<any> {
+  async _hidCommand(
+    command: Command,
+    bytes: Array<number> = [],
+    commandName?: string,
+  ): Promise<any> {
     const commandBytes = [...[COMMAND_START, command], ...bytes];
     const paddedArray = new Array(33).fill(0);
     commandBytes.forEach((val, idx) => {
@@ -754,10 +777,9 @@ export class KeyboardAPI {
       );
 
       const deviceInfo = extractDeviceInfo(this.getHID());
-      const commandName = APICommandValueToName[command];
       store.dispatch(
         logKeyboardAPIError({
-          commandName,
+          commandName: commandName ?? APICommandValueToName[command],
           commandBytes: commandBytes.slice(1),
           responseBytes: buffer,
           deviceInfo,

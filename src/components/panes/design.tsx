@@ -20,6 +20,7 @@ import {
   VIADefinitionV3,
 } from '@the-via/reader';
 import type {DefinitionVersion} from '@the-via/reader';
+import {resolveDefinitionName} from 'src/utils/definition-name';
 import {
   ControlRow,
   Label,
@@ -250,7 +251,7 @@ export const DesignTab: FC = () => {
   );
 
   const options = versionDefinitions.map((definitionMap, index) => ({
-    label: definitionMap[definitionVersion].name,
+    label: resolveDefinitionName(definitionMap[definitionVersion].name),
     value: index.toString(),
   }));
 
@@ -410,7 +411,9 @@ export const DesignTab: FC = () => {
                 <IndentedControlRow
                   key={`${definitionVersion}-${definition[definitionVersion].vendorProductId}`}
                 >
-                  <SubLabel>{definition[definitionVersion].name}</SubLabel>
+                  <SubLabel>
+                    {resolveDefinitionName(definition[definitionVersion].name)}
+                  </SubLabel>
                   <Detail>
                     {formatNumberAsHex(
                       definition[definitionVersion].vendorProductId,
