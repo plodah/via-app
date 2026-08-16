@@ -15,6 +15,15 @@ export const decodeRangeValue = (value: number[], max: number) =>
 export const encodeRangeValue = (value: number, max: number) =>
   max > 255 ? [value >> 8, value & 255] : [value];
 
+export const encodeRangeCommand = (
+  content: readonly [string, number, number, ...number[]],
+  value: number,
+  max: number,
+) => {
+  const [, ...command] = content;
+  return [...command, ...encodeRangeValue(value, max)];
+};
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
@@ -91,49 +100,53 @@ export const resolveRangeChange = (
   controls: RangeControlMap,
   currentValues: LogicalRangeValues,
 ): LogicalRangeValues => {
-  const control = controls[id];
   const values = {...currentValues};
-  values[id] = clamp(requestedValue, control.options[0], control.options[1]);
+  const resolving = new Set<string>();
 
-  for (const constraint of control.constraints ?? []) {
-    const referencedId = referenceId(constraint);
-    const referencedValue = values[referencedId];
-    if (
-      referencedValue === undefined ||
-      !violates(values[id], constraint, referencedValue)
-    ) {
-      continue;
+  const resolve = (
+    controlId: string,
+    value: number,
+    ignoredReferenceId?: string,
+  ) => {
+    const control = controls[controlId];
+    values[controlId] = clamp(value, control.options[0], control.options[1]);
+    resolving.add(controlId);
+
+    for (const constraint of control.constraints ?? []) {
+      const referencedId = referenceId(constraint);
+      const referencedValue = values[referencedId];
+      if (
+        referencedId === ignoredReferenceId ||
+        referencedValue === undefined ||
+        !violates(values[controlId], constraint, referencedValue)
+      ) {
+        continue;
+      }
+
+      if (constraint.onViolation === 'push' && !resolving.has(referencedId)) {
+        const strictAdjustment =
+          constraint.operator === '>'
+            ? -1
+            : constraint.operator === '<'
+              ? 1
+              : 0;
+        const desiredReference =
+          values[controlId] - (constraint.offset ?? 0) + strictAdjustment;
+        resolve(referencedId, desiredReference, controlId);
+      }
+
+      const boundary = constraintBoundary(constraint, values[referencedId]);
+      if (constraint.operator === '>' || constraint.operator === '>=') {
+        values[controlId] = Math.max(values[controlId], boundary);
+      } else {
+        values[controlId] = Math.min(values[controlId], boundary);
+      }
     }
 
-    if (constraint.onViolation === 'push') {
-      const strictAdjustment =
-        constraint.operator === '>' ? -1 : constraint.operator === '<' ? 1 : 0;
-      const desiredReference =
-        values[id] - (constraint.offset ?? 0) + strictAdjustment;
-      const referenceBounds = getRangeBounds(
-        referencedId,
-        controls,
-        values,
-        false,
-        id,
-      );
-      values[referencedId] = clamp(
-        desiredReference,
-        referenceBounds.min,
-        referenceBounds.max,
-      );
-    }
+    resolving.delete(controlId);
+  };
 
-    const boundary = constraintBoundary(constraint, values[referencedId]);
-    if (constraint.operator === '>' || constraint.operator === '>=') {
-      values[id] = Math.max(values[id], boundary);
-    } else {
-      values[id] = Math.min(values[id], boundary);
-    }
-  }
-
-  const finalBounds = getRangeBounds(id, controls, values);
-  values[id] = clamp(values[id], finalBounds.min, finalBounds.max);
+  resolve(id, requestedValue);
   return values;
 };
 
